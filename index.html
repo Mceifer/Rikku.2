@@ -4,12 +4,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rikku.2</title>
+<title>Rikku</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -22,62 +20,57 @@ body {
 }
 
 header {
-  padding: 30px 20px;
+  padding: 25px;
   text-align: center;
   border-bottom: 1px solid #b99a55;
 }
 
 h1 {
   color: #c8aa65;
-  font-size: 36px;
+  font-size: 34px;
   letter-spacing: 5px;
   margin: 0;
 }
 
 .subtitle {
   color: #8da58e;
-  margin-top: 10px;
-}
-
-main {
-  flex: 1;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.status {
-  color: #8da58e;
-  margin: 25px 0;
+  margin-top: 8px;
 }
 
 #messages {
-  width: 100%;
-  max-width: 600px;
   flex: 1;
+  padding: 20px;
+  overflow-y: auto;
 }
 
 .message {
+  max-width: 85%;
   background: #14231b;
   border: 1px solid #526c50;
-  padding: 15px;
+  padding: 14px;
   border-radius: 12px;
-  margin-bottom: 12px;
+  margin: 12px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.user {
+  margin-left: auto;
+  background: #293322;
+  border-color: #b99a55;
 }
 
 #inputArea {
-  width: 100%;
-  max-width: 600px;
   display: flex;
   gap: 8px;
   padding: 15px;
+  border-top: 1px solid #526c50;
 }
 
 input {
   flex: 1;
   min-width: 0;
-  padding: 15px;
+  padding: 14px;
   border-radius: 10px;
   border: 1px solid #b99a55;
   background: #111914;
@@ -90,8 +83,12 @@ button {
   color: #080d0b;
   border: none;
   border-radius: 10px;
-  padding: 12px 18px;
+  padding: 12px;
   font-weight: bold;
+}
+
+button:disabled {
+  opacity: 0.5;
 }
 </style>
 </head>
@@ -103,35 +100,85 @@ button {
   <div class="subtitle">Votre assistant personnel</div>
 </header>
 
-<main>
-  <div class="status">● Système initialisé</div>
-
-  <div id="messages">
-    <div class="message">
-      Bonjour. Je suis Rikku. Comment puis-je vous aider ?
-    </div>
+<div id="messages">
+  <div class="message">
+    Bonjour ! Je suis Rikku. Je suis maintenant prête à discuter avec vous.
   </div>
+</div>
 
-  <div id="inputArea">
-    <input id="userInput" placeholder="Écrivez votre message...">
-    <button onclick="sendMessage()">Envoyer</button>
-  </div>
-</main>
+<div id="inputArea">
+  <input id="userInput" placeholder="Écrivez votre message...">
+  <button id="sendButton" onclick="sendMessage()">Envoyer</button>
+</div>
 
 <script>
-function sendMessage() {
+const API_URL = "https://rikku-api.nepper-loic.workers.dev/";
+
+async function sendMessage() {
   const input = document.getElementById("userInput");
   const messages = document.getElementById("messages");
+  const button = document.getElementById("sendButton");
 
-  if (!input.value.trim()) return;
+  const text = input.value.trim();
+  if (!text) return;
 
-  const message = document.createElement("div");
-  message.className = "message";
-  message.textContent = input.value;
+  const userMessage = document.createElement("div");
+  userMessage.className = "message user";
+  userMessage.textContent = text;
+  messages.appendChild(userMessage);
 
-  messages.appendChild(message);
   input.value = "";
+  button.disabled = true;
+  button.textContent = "...";
+
+  const loading = document.createElement("div");
+  loading.className = "message";
+  loading.textContent = "Rikku réfléchit...";
+  messages.appendChild(loading);
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: text
+      })
+    });
+
+    const data = await response.json();
+    loading.remove();
+
+    const reply = document.createElement("div");
+    reply.className = "message";
+
+    if (data.reply) {
+      reply.textContent = data.reply;
+    } else {
+      reply.textContent = "Erreur : " + (data.error || "Réponse indisponible.");
+    }
+
+    messages.appendChild(reply);
+
+  } catch (error) {
+    loading.remove();
+
+    const errorMessage = document.createElement("div");
+    errorMessage.className = "message";
+    errorMessage.textContent =
+      "Impossible de contacter Rikku. Vérifiez votre connexion.";
+    messages.appendChild(errorMessage);
+  }
+
+  messages.scrollTop = messages.scrollHeight;
+  button.disabled = false;
+  button.textContent = "Envoyer";
 }
+
+document.getElementById("userInput").addEventListener("keydown", function(event) {
+  if (event.key === "Enter") sendMessage();
+});
 </script>
 
 </body>
